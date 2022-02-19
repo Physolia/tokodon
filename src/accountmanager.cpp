@@ -34,9 +34,9 @@ QVariant AccountManager::data(const QModelIndex &index, int role) const
     auto account = m_accounts.at(index.row());
     switch (role) {
     case Qt::DisplayRole:
-        return account->identity().m_display_name;
+        return account->identity().displayName();
     case DescriptionRole:
-        return account->identity().m_acct;
+        return account->identity().account();
     case AccountRole:
         return QVariant::fromValue(m_accounts[index.row()]);
     }

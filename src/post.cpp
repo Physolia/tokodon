@@ -56,7 +56,7 @@ Post::Post(Account *parent)
     : QObject(parent)
     , m_parent(parent)
 {
-    QString vis_str = parent->identity().m_visibility;
+    const QString vis_str = parent->identity().visibility();
     m_visibility = str_to_vis[vis_str];
 }
 

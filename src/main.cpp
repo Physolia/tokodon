@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
         return new Clipboard;
     });
     qmlRegisterType<AttachmentEditorModel>("org.kde.kmasto", 1, 0, "AttachmentEditorModel");
+    qmlRegisterType<Identity>("org.kde.kmasto", 1, 0, "Identity");
     qRegisterMetaType<Account *>("Account*");
     qRegisterMetaType<Identity *>("Identity*");
     qRegisterMetaType<Relationship *>("Relationship*");

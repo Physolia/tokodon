@@ -30,48 +30,82 @@ class Identity : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString displayName MEMBER m_display_name CONSTANT)
-    Q_PROPERTY(QString bio MEMBER m_bio CONSTANT)
-    Q_PROPERTY(QString account MEMBER m_acct CONSTANT)
-    Q_PROPERTY(bool locked MEMBER m_locked CONSTANT)
-    Q_PROPERTY(QString visibility MEMBER m_visibility CONSTANT)
-    Q_PROPERTY(QUrl avatarUrl MEMBER m_avatarUrl CONSTANT)
-    Q_PROPERTY(QUrl backgroundUrl MEMBER m_backgroundUrl CONSTANT)
-    Q_PROPERTY(int followersCount MEMBER m_followersCount CONSTANT)
-    Q_PROPERTY(int followingCount MEMBER m_followingCount CONSTANT)
-    Q_PROPERTY(int statusesCount MEMBER m_statusesCount CONSTANT)
-    Q_PROPERTY(QJsonArray fields MEMBER m_fields CONSTANT)
+    Q_PROPERTY(QString displayName READ displayName WRITE setDisplayName NOTIFY displayNameChanged)
+    Q_PROPERTY(QString bio READ bio WRITE setBio NOTIFY bioChanged)
+    Q_PROPERTY(QString account READ account WRITE setAccount NOTIFY accountChanged)
+    Q_PROPERTY(bool locked READ locked WRITE setLocked NOTIFY lockedChanged)
+    Q_PROPERTY(QString visibility READ visibility WRITE setVisibility NOTIFY visibilityChanged)
+    Q_PROPERTY(bool discoverable READ discoverable WRITE setDiscoverable NOTIFY discoverableChanged)
+    Q_PROPERTY(QUrl avatarUrl READ avatarUrl CONSTANT)
+    Q_PROPERTY(QUrl backgroundUrl READ backgroundUrl CONSTANT)
+    Q_PROPERTY(int followersCount READ followersCount CONSTANT)
+    Q_PROPERTY(int followingCount READ followingCount CONSTANT)
+    Q_PROPERTY(int statusesCount READ statusesCount CONSTANT)
+    Q_PROPERTY(QJsonArray fields READ fields CONSTANT)
 
     Q_PROPERTY(Relationship *relationship READ relationship NOTIFY relationshipChanged)
 
 public:
+    QString displayName() const;
+    void setDisplayName(const QString &displayName);
+
+    QString bio() const;
+    void setBio(const QString &bio);
+
+    QString account() const;
+    void setAccount(const QString &account);
+
+    bool locked() const;
+    void setLocked(bool locked);
+
+    QString visibility() const;
+    void setVisibility(const QString &visibility);
+
+    bool discoverable() const;
+    void setDiscoverable(bool discoverable);
+
+    Relationship* relationship() const;
+    void setRelationship(Relationship *r);
+
+    QUrl avatarUrl() const;
+    QUrl backgroundUrl() const;
+    int followersCount() const;
+    int followingCount() const;
+    int statusesCount() const;
+    QJsonArray fields() const;
+    qint64 id() const;
+
+    void reparentIdentity(Account *parent);
+    void fromSourceData(const QJsonObject &doc);
+    void fetchAvatar(const QUrl &avatar_url);
+
+Q_SIGNALS:
+    void displayNameChanged();
+    void bioChanged();
+    void accountChanged();
+    void lockedChanged();
+    void visibilityChanged();
+    void discoverableChanged();
+    void relationshipChanged();
+
+private:
     qint64 m_id;
-    QString m_display_name;
     QString m_bio;
     QString m_acct;
     bool m_locked;
     QString m_visibility;
+    QString m_display_name;
     QUrl m_avatarUrl;
     QUrl m_backgroundUrl;
     QJsonArray m_fields;
     int m_followersCount;
     int m_followingCount;
     int m_statusesCount;
-    void fromSourceData(const QJsonObject &doc);
-    void fetchAvatar(const QUrl &avatar_url);
-    void reparentIdentity(Account *parent);
+    bool m_discoverable;
+    Relationship *m_relationship = nullptr;
 
     QNetworkAccessManager *m_qnam;
     Account *m_parent;
-
-    Relationship* relationship() const;
-    void setRelationship(Relationship *r);
-
-Q_SIGNALS:
-    void relationshipChanged();
-
-private:
-    Relationship *m_relationship = nullptr;
 };
 
 class Account : public QObject
@@ -106,6 +140,8 @@ public:
 
     // OAuth authorization
     Q_INVOKABLE QUrl getAuthorizeUrl() const;
+    Q_INVOKABLE void saveAccount(Identity *newIdentity);
+
     QUrl getTokenUrl() const;
     Q_INVOKABLE void setToken(const QString &authcode);
     bool haveToken() const

@@ -87,6 +87,10 @@ Kirigami.ApplicationWindow {
                     onClicked: if (AccountManager.selectedAccount !== model.account) {
                         AccountManager.selectedAccount = model.account;
                     }
+                    trailing: QQC2.ToolButton {
+			icon.name: 'im-user'
+                        onClicked: applicationWindow().pageStack.pushDialogLayer('qrc:/content/ui/ProfileEditor.qml', {account: model.account}, {title: i18n('Profile Editor')})
+                    }
                 }
             }
             Kirigami.BasicListItem {

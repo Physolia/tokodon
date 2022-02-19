@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QUrlQuery>
 #include <KLocalizedString>
+#include <qjsonarray.h>
 
 Relationship* Identity::relationship() const {
     return m_relationship;
@@ -50,6 +51,125 @@ Account::~Account()
     m_identityCache.clear();
 }
 
+QString Identity::displayName() const
+{
+    return m_display_name;
+}
+
+void Identity::setDisplayName(const QString &displayName)
+{
+    if (m_display_name == displayName) {
+        return;
+    }
+    m_display_name = displayName;
+    Q_EMIT displayNameChanged();
+}
+
+QString Identity::bio() const
+{
+    return m_bio;
+}
+
+void Identity::setBio(const QString &bio)
+{
+    if (m_bio == bio) {
+        return;
+    }
+    m_bio = bio;
+    Q_EMIT bioChanged();
+}
+
+QString Identity::account() const
+{
+    return m_acct;
+}
+
+void Identity::setAccount(const QString &account)
+{
+    if (m_acct == account) {
+        return;
+    }
+    m_acct = account;
+    Q_EMIT accountChanged();
+}
+
+bool Identity::locked() const
+{
+    return m_locked;
+}
+
+void Identity::setLocked(bool locked)
+{
+    if (m_locked == locked) {
+        return;
+    }
+    m_locked = locked;
+    Q_EMIT lockedChanged();
+}
+
+qint64 Identity::id() const
+{
+    return m_id;
+}
+
+QString Identity::visibility() const
+{
+    return m_visibility;
+}
+
+QUrl Identity::avatarUrl() const
+{
+    return m_avatarUrl;
+}
+
+QUrl Identity::backgroundUrl() const
+{
+    return m_backgroundUrl;
+}
+
+int Identity::followersCount() const
+{
+    return m_followersCount;
+}
+
+int Identity::followingCount() const
+{
+    return m_followingCount;
+}
+
+int Identity::statusesCount() const
+{
+    return m_statusesCount;
+}
+
+QJsonArray Identity::fields() const
+{
+    return m_fields;
+}
+
+void Identity::setVisibility(const QString &visibility)
+{
+    if (m_visibility == visibility) {
+        return;
+    }
+    m_visibility = visibility;
+    Q_EMIT visibilityChanged();
+}
+
+bool Identity::discoverable() const
+{
+    return m_discoverable;
+}
+
+void Identity::setDiscoverable(bool discoverable)
+{
+    if (m_discoverable == discoverable) {
+        return;
+    }
+    m_discoverable = discoverable;
+    Q_EMIT discoverableChanged();
+}
+
 QUrl Account::apiUrl(const QString &path) const
 {
     auto url = QUrl::fromUserInput(m_instance_uri);
@@ -89,6 +209,19 @@ void Account::registerApplication()
             Q_EMIT registered();
     });
 }
+
+void Account::saveAccount(Identity *identity)
+{
+    const QUrl url = apiUrl("/api/v1/accounts/update_credentials");
+    QJsonObject obj;
+    obj["display_name"] = identity->displayName();
+    const QJsonDocument doc(obj);
+    post(url, doc, false, [=](QNetworkReply *reply) {
+        qDebug() << "Account saved";
+    });
+    qDebug() << "Account saving";
+}
+
 
 void Account::setDirtyIdentity()
 {
@@ -267,7 +400,7 @@ void Account::updateAttachment(Attachment *a)
 const std::shared_ptr<Identity> Account::identityLookup(const QString &acct, const QJsonObject &doc)
 {
     auto id = m_identityCache[acct];
-    if (id && id->m_acct == acct)
+    if (id && id->account() == acct)
         return m_identityCache[acct];
 
     id = std::make_shared<Identity>();
@@ -281,7 +414,7 @@ const std::shared_ptr<Identity> Account::identityLookup(const QString &acct, con
 bool Account::identityCached(const QString &acct) const
 {
     auto id = m_identityCache[acct];
-    return id && id->m_acct == acct;
+    return id && id->account() == acct;
 }
 
 QUrlQuery Account::buildOAuthQuery() const
@@ -747,7 +880,7 @@ QWebSocket *Account::streamingSocket(const QString &stream)
             QJsonDocument doc = QJsonDocument::fromJson(env.object()["payload"].toString().toLocal8Bit());
             auto account_obj = doc.object()["account"].toObject();
 
-            if (account_obj["acct"] == m_identity.m_acct)
+            if (account_obj["acct"] == m_identity.account())
                 return;
 
             if (settings.value("Preferences/timeline_firehose", true).toBool())
@@ -811,7 +944,7 @@ void Account::executeAction(Identity *i, AccountAction accountAction, const QJso
 
     const auto apiCall = accountActionMap[accountAction];
 
-    const auto account_id = QString::number(i->m_id);
+    const auto account_id = QString::number(i->id());
     const QString api_url = QStringLiteral("/api/v1/accounts/") + account_id + apiCall;
     QUrl url = apiUrl(api_url);
     const QJsonDocument doc(extraArguments);
@@ -916,6 +1049,7 @@ void Identity::fromSourceData(const QJsonObject &doc)
     m_followingCount = doc["following_count"].toInt();
     m_statusesCount = doc["statuses_count"].toInt();
     m_fields = doc["fields"].toArray();
+    m_discoverable = doc["discoverable"].toBool();
 
     // When the user data is ourselves, we get source.privacy
     // with the default post privacy setting for the user. all others
@@ -925,7 +1059,7 @@ void Identity::fromSourceData(const QJsonObject &doc)
 
     m_avatarUrl = QUrl(doc["avatar"].toString());
 
-    if (m_acct == m_parent->identity().m_acct)
+    if (m_acct == m_parent->identity().account())
         m_parent->setDirtyIdentity();
 }
 
