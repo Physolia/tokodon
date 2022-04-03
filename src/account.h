@@ -20,6 +20,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
+#include <qhttpmultipart.h>
 
 #include "post.h"
 #include "relationship.h"
@@ -136,6 +137,7 @@ public:
     void post(const QUrl &url, const QUrlQuery &formdata, bool authenticated, std::function<void(QNetworkReply *)>);
     void post(const QUrl &url, QHttpMultiPart *message, bool authenticated, std::function<void(QNetworkReply *)>);
     void patch(const QUrl &url, const QJsonDocument &doc, bool authenticated, std::function<void(QNetworkReply *)>);
+    void patch(const QUrl &url, QHttpMultiPart *multiPart, bool authenticated, std::function<void(QNetworkReply *)>);
     void put(const QUrl &url, const QJsonDocument &doc, bool authenticated, std::function<void(QNetworkReply *)>);
 
     // OAuth authorization
@@ -289,6 +291,7 @@ Q_SIGNALS:
     void notification(std::shared_ptr<Notification> n);
     void followRequestBlocked();
     void errorOccured(const QString &errorMessage);
+    void sendNotification(const QString &message, const QString &type = QString("info"));
 
 private:
     QString m_name;

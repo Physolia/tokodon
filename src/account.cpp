@@ -7,7 +7,9 @@
 #include <QDebug>
 #include <QUrlQuery>
 #include <KLocalizedString>
+#include <qhttpmultipart.h>
 #include <qjsonarray.h>
+#include <qjsonobject.h>
 
 Relationship* Identity::relationship() const {
     return m_relationship;
@@ -213,13 +215,36 @@ void Account::registerApplication()
 void Account::saveAccount(Identity *identity)
 {
     const QUrl url = apiUrl("/api/v1/accounts/update_credentials");
-    QJsonObject obj;
-    obj["display_name"] = identity->displayName();
-    const QJsonDocument doc(obj);
-    post(url, doc, false, [=](QNetworkReply *reply) {
-        qDebug() << "Account saved";
+
+    auto multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+
+    QHttpPart displayNamePart;
+    displayNamePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"account[display_name]\""));
+    displayNamePart.setBody(identity->displayName().toUtf8());
+    multiPart->append(displayNamePart);
+
+    QHttpPart notePart;
+    notePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"account[note]\""));
+    notePart.setBody(identity->bio().toUtf8());
+    multiPart->append(notePart);
+
+    //if (identity->backgroundUrl().isLocalFile()) {
+    //    auto file = new QFile(identity->backgroundUrl().toLocalFile());
+    //    if (file->open(QIODevice::ReadOnly)) {
+    //        QHttpPart headerPart;
+    //        headerPart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/jpeg"));
+    //        headerPart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"account[header]\""));
+    //        headerPart.setBodyDevice(file);
+    //        file->setParent(multiPart);
+    //        multiPart->append(headerPart);
+    //    }
+    //}
+
+    patch(url, multiPart, true, [=](QNetworkReply *reply) {
+        qDebug() << "account detail saved" << reply << reply->readAll();
+        multiPart->setParent(reply);
+        Q_EMIT sendNotification(i18n("Account details saved"));
     });
-    qDebug() << "Account saving";
 }
 
 
@@ -271,6 +296,55 @@ void Account::post(const QUrl &url, const QJsonDocument &doc, bool authenticated
     qDebug() << "POST" << url << "[" << post_data << "]";
 
     auto reply = m_qnam->post(request, post_data);
+
+    if (reply_cb != nullptr) {
+        QObject::connect(reply, &QNetworkReply::finished, [reply, reply_cb]() {
+            if (200 != reply->attribute(QNetworkRequest::HttpStatusCodeAttribute))
+                return;
+
+            reply_cb(reply);
+        });
+    }
+}
+
+void Account::patch(const QUrl &url, const QJsonDocument &doc, bool authenticated, std::function<void(QNetworkReply *)> reply_cb)
+{
+    auto post_data = doc.toJson();
+
+    QNetworkRequest request = QNetworkRequest(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    if (authenticated && haveToken()) {
+        QByteArray bearer = QString("Bearer " + m_token).toLocal8Bit();
+        request.setRawHeader("Authorization", bearer);
+    }
+
+    qDebug() << "PUT" << url << "[" << post_data << "]";
+
+    QNetworkReply *reply = m_qnam->sendCustomRequest(request, "PATCH", post_data);
+
+    if (reply_cb != nullptr) {
+        QObject::connect(reply, &QNetworkReply::finished, [reply, reply_cb]() {
+            if (200 != reply->attribute(QNetworkRequest::HttpStatusCodeAttribute))
+                return;
+
+            reply_cb(reply);
+        });
+    }
+}
+
+void Account::patch(const QUrl &url, QHttpMultiPart *multiPart, bool authenticated, std::function<void(QNetworkReply *)> reply_cb)
+{
+    QNetworkRequest request = QNetworkRequest(url);
+
+    if (authenticated && haveToken()) {
+        QByteArray bearer = QString("Bearer " + m_token).toLocal8Bit();
+        request.setRawHeader("Authorization", bearer);
+    }
+
+    qDebug() << "PATCH multipart" << url;
+
+    QNetworkReply *reply = m_qnam->sendCustomRequest(request, "PATCH", multiPart);
 
     if (reply_cb != nullptr) {
         QObject::connect(reply, &QNetworkReply::finished, [reply, reply_cb]() {
